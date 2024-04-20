@@ -1,35 +1,40 @@
 #!/usr/bin/env bash
-# Sets up a web server for deployment of web_static.
 
-apt-get update
-apt-get install -y nginx
+# Install Nginx if not already installed
+if ! dpkg -l nginx &> /dev/null; then
+    sudo apt update
+    sudo apt install -y nginx
+fi
 
-mkdir -p /data/web_static/releases/test/
-mkdir -p /data/web_static/shared/
-printf "<html>\n\t<head>\n\t</head>\n\t<body>\n\t\tHolberton School\n\t</body>\n</html>\n" | tee /data/web_static/releases/test/index.html 
-ln -sf /data/web_static/releases/test/ /data/web_static/current
+# Create directories if they don't exist
+sudo mkdir -p /data/web_static/releases/test /data/web_static/shared
 
-chown -R ubuntu /data/
-chgrp -R ubuntu /data/
+# Create fake HTML file
+echo -e "<html>\n  <head>\n  </head>\n  <body>\n    Holberton School\n  </body>\n</html>" | sudo tee /data/web_static/releases/test/index.html > /dev/null
 
-printf %s "server {
-    listen 80 default_server;
-    listen [::]:80 default_server;
-    add_header X-Served-By $hostname;
-    root   /var/www/html;
-    index  index.html index.htm;
+# Create symbolic link
+sudo ln -sf /data/web_static/releases/test /data/web_static/current
+
+# Give ownership to ubuntu user and group
+sudo chown -R ubuntu:ubuntu /data/
+
+# Update Nginx configuration
+config="server {
+    listen 80;
+    server_name _;
+
     location /hbnb_static {
-        alias /data/web_static/current;
-        index index.html index.htm;
+        alias /data/web_static/current/;
     }
-    location /redirect_me {
-        return 301 http://github.com/globalsmile;
-    }
-    error_page 404 /404.html;
-    location /404 {
-      root /var/www/html;
-      internal;
-    }
-}" > /etc/nginx/sites-available/default
+}"
+echo "$config" | sudo tee /etc/nginx/sites-available/hbnb_static > /dev/null
 
-service nginx restart
+# Create symbolic link to enable the site
+sudo ln -sf /etc/nginx/sites-available/hbnb_static /etc/nginx/sites-enabled/
+
+# Restart Nginx
+sudo systemctl restart nginx
+
+# Exit successfully
+exit 0
+
